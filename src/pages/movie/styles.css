@@ -21,7 +21,7 @@ nav h1 {
   color: #212121;
   background-color: #ffffff;
   font-weight: 1000;
-  font-size: 12 px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 250ms;
 }
@@ -30,8 +30,9 @@ nav h1 {
 }
 
 .img_movie {
-  width: 20%;
-  margin: 0 40%;
+  width: min(300px, 80%);
+  display: block;
+  margin: 0 auto;
 }
 
 .movie-desc {

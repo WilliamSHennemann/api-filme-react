@@ -48,7 +48,7 @@ export const Btn = styled.button`
     color: #212121;
     background-color: #ffffff;
     font-weight: 1000;
-    font-size: 12 px;
+    font-size: 12px;
     cursor: pointer;
     transition: all 250ms;
 `;

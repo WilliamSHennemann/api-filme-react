@@ -6,25 +6,41 @@ function Home() {
     const imagePath = "https://image.tmdb.org/t/p/w500";
 
     const [movies, setMovies] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const KEY = process.env.REACT_APP_KEY;
     useEffect(() => {
-        fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${KEY}&language=pt-BR`)
-            .then((response) => response.json())
-            .then((data) => {
-                setMovies(data.results);
-            });
-    }, [KEY]);
+    fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${KEY}&language=pt-BR`)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Erro ao buscar filmes");
+            }
+
+            return response.json();
+        })
+        .then((data) => {
+            setMovies(data.results);
+        })
+        .catch(() => {
+            setError("Não foi possível carregar os filmes.");
+        })
+        .finally(() => {
+            setLoading(false);
+        });
+}, [KEY]);
 
     return (
         <Container>
             <h1>Movies</h1>
-            <MovieList>
+            {loading && <p>Carregando...</p>}
+            {error && <p>{error}</p>}
+            {!loading && !error && <MovieList>
                 {movies.map((movie) => {
                     return (
                         <Movie key={movie.id}>
                             <img
                                 src={`${imagePath}${movie.poster_path}`}
-                                alt="{movie.title}"
+                                alt={movie.title}
                             />
                             <span>{movie.title}</span>
 
@@ -34,7 +50,7 @@ function Home() {
                         </Movie>
                     );
                 })}
-            </MovieList>
+            </MovieList>}
         </Container>
     );
 }
