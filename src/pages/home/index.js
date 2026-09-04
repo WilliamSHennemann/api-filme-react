@@ -1,118 +1,29 @@
-import { useEffect, useState } from "react";
-import { Container, Movie, MovieList, Btn } from "./style";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Container, Movie, MovieList, Header, SearchBox, Section, CategoryBar, EmptyState } from "./style";
+import { useUser } from "../../context/UserContext";
+import AuthModal from "../../components/AuthModal";
+
+const imagePath = "https://image.tmdb.org/t/p/w500";
+const categories = [["popular", "Em alta"], ["top_rated", "Melhores avaliados"], ["action", "Ação"], ["comedy", "Comédia"], ["animation", "Animação"], ["horror", "Terror"]];
+const genreIds = { action: 28, comedy: 35, animation: 16, horror: 27 };
 
 function Home() {
-    const imagePath = "https://image.tmdb.org/t/p/w500";
-
-    const [movies, setMovies] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [search, setSearch] = useState("");
-    const [searchHistory, setSearchHistory] = useState(() => {
-    return JSON.parse(localStorage.getItem("searchHistory")) || [];
-    });
-    const [showHistory, setShowHistory] = useState(false);
-    const KEY = process.env.REACT_APP_KEY;
-    useEffect(() => {
-        setLoading(true);
-        setError(null);
-
-    fetch(
-    search.trim()
-        ? `https://api.themoviedb.org/3/search/movie?api_key=${KEY}&language=pt-BR&query=${encodeURIComponent(search)}`
-        : `https://api.themoviedb.org/3/movie/popular?api_key=${KEY}&language=pt-BR`
-)
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error("Erro ao buscar filmes");
-            }
-
-            return response.json();
-        })
-        .then((data) => {
-            setMovies(data.results);
-        })
-        .catch(() => {
-            setError("Não foi possível carregar os filmes.");
-        })
-        .finally(() => {
-            setLoading(false);
-        });
-
-}, [KEY, search]);
-
-    function saveSearch() {
-    const term = search.trim();
-
-    if (!term) return;
-
-    const updatedHistory = [
-        term,
-        ...searchHistory.filter((item) => item !== term),
-    ].slice(0, 5);
-
-    setSearchHistory(updatedHistory);
-
-    localStorage.setItem(
-        "searchHistory",
-        JSON.stringify(updatedHistory)
-    );
+  const { user, logout, isFavorite, toggleFavorite } = useUser();
+  const [movies, setMovies] = useState([]); const [topRated, setTopRated] = useState([]);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const [search, setSearch] = useState(""); const [activeCategory, setActiveCategory] = useState("popular");
+  const [authOpen, setAuthOpen] = useState(false); const [notice, setNotice] = useState("");
+  const [searchHistory, setSearchHistory] = useState(() => { try { return JSON.parse(localStorage.getItem("searchHistory")) || []; } catch { return []; } });
+  const [showHistory, setShowHistory] = useState(false); const KEY = process.env.REACT_APP_KEY;
+  const requestUrl = useMemo(() => search.trim() ? `/search/movie?query=${encodeURIComponent(search.trim())}` : genreIds[activeCategory] ? `/discover/movie?with_genres=${genreIds[activeCategory]}&sort_by=popularity.desc` : `/movie/${activeCategory}`, [search, activeCategory]);
+  useEffect(() => { setLoading(true); setError(""); const separator = requestUrl.includes("?") ? "&" : "?"; fetch(`https://api.themoviedb.org/3${requestUrl}${separator}api_key=${KEY}&language=pt-BR`).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => setMovies(data.results || [])).catch(() => setError("Não foi possível carregar os filmes. Tente novamente.")).finally(() => setLoading(false)); }, [KEY, requestUrl]);
+  useEffect(() => { fetch(`https://api.themoviedb.org/3/movie/top_rated?api_key=${KEY}&language=pt-BR`).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => setTopRated((data.results || []).slice(0, 5))).catch(() => setTopRated([])); }, [KEY]);
+  function saveSearch() { const term = search.trim(); if (!term) return; const updated = [term, ...searchHistory.filter((item) => item.toLowerCase() !== term.toLowerCase())].slice(0, 5); setSearchHistory(updated); localStorage.setItem("searchHistory", JSON.stringify(updated)); setShowHistory(false); }
+  function favorite(movie) { if (!toggleFavorite(movie)) { setNotice("Entre na sua conta para criar sua lista."); setAuthOpen(true); return; } setNotice(isFavorite(movie.id) ? "Removido da sua lista." : "Adicionado à sua lista!"); window.setTimeout(() => setNotice(""), 2400); }
+  const selectedName = categories.find(([id]) => id === activeCategory)?.[1] || "Resultados";
+  const poster = (movie) => movie.poster_path ? `${imagePath}${movie.poster_path}` : "https://placehold.co/500x750/252525/ffffff?text=Sem+poster";
+  const card = (movie) => <Movie key={movie.id}><Link to={`/${movie.id}`}><img src={poster(movie)} alt={`Poster de ${movie.title}`} /><div className="movie-info"><span>{movie.title}</span><small>★ {movie.vote_average?.toFixed(1) || "–"}</small></div></Link><button className={isFavorite(movie.id) ? "favorite saved" : "favorite"} onClick={() => favorite(movie)} aria-label="Salvar nos favoritos">{isFavorite(movie.id) ? "♥" : "♡"}</button></Movie>;
+  return <Container><Header><Link to="/" className="brand">CINE<span>LIST</span></Link><div className="account-actions">{user ? <><Link to="/favoritos" className="my-list">♡ Minha lista</Link><button className="account-button" onClick={logout}>Sair</button></> : <button className="account-button" onClick={() => setAuthOpen(true)}>Entrar</button>}</div></Header><main><section className="hero"><p className="eyebrow">DESCUBRA O SEU PRÓXIMO FILME</p><h1>Todo filme merece<br /><em>um lugar na sua lista.</em></h1><SearchBox onMouseLeave={() => setShowHistory(false)}><input type="text" placeholder="Pesquise um filme" value={search} onFocus={() => setShowHistory(true)} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveSearch()} /><button onClick={saveSearch} aria-label="Buscar filme">⌕</button>{showHistory && searchHistory.length > 0 && <ul>{searchHistory.map((item) => <li key={item}><button onMouseDown={() => { setSearch(item); setShowHistory(false); }}>{item}</button></li>)}</ul>}</SearchBox></section><CategoryBar aria-label="Categorias">{categories.map(([id, label]) => <button key={id} className={activeCategory === id && !search ? "active" : ""} onClick={() => { setSearch(""); setActiveCategory(id); }}>{label}</button>)}</CategoryBar>{notice && <div className="notice">{notice}</div>}<Section><div className="section-heading"><div><p className="eyebrow">EXPLORE</p><h2>{search ? `Resultados para “${search}”` : selectedName}</h2></div><span>{movies.length} títulos</span></div>{loading && <p className="status">Carregando filmes…</p>}{error && <p className="status error">{error}</p>}{!loading && !error && <MovieList>{movies.map(card)}</MovieList>}</Section>{!search && activeCategory !== "top_rated" && topRated.length > 0 && <Section className="top-rated"><div className="section-heading"><div><p className="eyebrow">PARA QUEM EXIGE MAIS</p><h2>Melhores avaliados</h2></div><button className="see-all" onClick={() => setActiveCategory("top_rated")}>Ver todos →</button></div><MovieList>{topRated.map(card)}</MovieList></Section>}{!loading && !error && !movies.length && <EmptyState>Nenhum filme encontrado. Tente outro termo.</EmptyState>}</main>{authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}</Container>;
 }
-
-    return (
-        <Container>
-            <h1>Movies</h1>
-            <input
-                type = "text"
-                placeholder = "Pesquise um filme"
-                value = {search}
-                onFocus={() => setShowHistory(true)}
-                onBlur={() => setShowHistory(false)}
-                onChange={(event) => setSearch(event.target.value)}
-                onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                        saveSearch();
-                    }
-                }}
-                />
-                {showHistory && searchHistory.length > 0 && (
-            <ul>
-                {searchHistory.map((item) => (
-                    <li key={item}>
-                        <button
-                            onMouseDown={() => {
-                                setSearch(item);
-                                setShowHistory(false);
-                            }}
-                        >
-                            {item}
-                        </button>
-                    </li>
-                ))}
-            </ul>
-            )}
-            {loading && <p>Carregando...</p>}
-            {error && <p>{error}</p>}
-            {!loading && !error && <MovieList>
-                {movies.map((movie) => {
-                    return (
-                        <Movie key={movie.id}>
-                            <img
-                                src={`${imagePath}${movie.poster_path}`}
-                                alt={movie.title}
-                            />
-                            <span>{movie.title}</span>
-
-                            <Link to={`/${movie.id}`}>
-                                <Btn>Detalhes</Btn>
-                            </Link>
-                        </Movie>
-                    );
-                })}
-            </MovieList>}
-        </Container>
-    );
-}
-
 export default Home;

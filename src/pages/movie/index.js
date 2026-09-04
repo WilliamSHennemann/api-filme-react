@@ -1,71 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { useUser } from "../../context/UserContext";
+import AuthModal from "../../components/AuthModal";
 import "./styles.css";
-
-const Movie = () => {
-    const { id } = useParams();
-    const imagePath = "https://image.tmdb.org/t/p/w500";
-
-    const [movie, setMovie] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const KEY = process.env.REACT_APP_KEY;
-    useEffect(() => {
-    fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${KEY}&language=pt-BR`)
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error("Erro ao buscar filme");
-            }
-
-            return response.json();
-        })
-        .then((data) => {
-            setMovie(data);
-        })
-        .catch(() => {
-            setError("Não foi possível carregar os detalhes do filme.");
-        })
-        .finally(() => {
-            setLoading(false);
-        });
-    }, [id, KEY]);
-
-    if (loading) {
-    return <p>Carregando...</p>;
-    }
-
-    if (error) {
-        return <p>{error}</p>;
-    }
-
-    if (!movie) {
-        return <p>Filme não encontrado.</p>;
-    }
-
-    return (
-        <div>
-            <nav>
-                <h1>Movie</h1>
-            </nav>
-            <img
-                className="img_movie"
-                src={`${imagePath}${movie.poster_path}`}
-                alt={movie.title}
-            />
-            <div className="container">
-                <h1>{movie.title}</h1>
-                <h3>Data de lançamento: {movie.release_date}</h3>
-                <div className="descricao">
-                    <h4>Descrição: </h4>
-                    <p className="movie-desc">{movie.overview}</p>
-                </div>
-                <Link to="/">
-                    <button className="link_button">Voltar</button>
-                </Link>
-            </div>
-        </div>
-    );
-};
-
-export default Movie;
+const imagePath = "https://image.tmdb.org/t/p/w500";
+const readComments = (id) => { try { return JSON.parse(localStorage.getItem(`movieComments-${id}`)) || []; } catch { return []; } };
+export default function Movie() { const { id } = useParams(); const { user, isFavorite, toggleFavorite } = useUser(); const [movie, setMovie] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [comments, setComments] = useState(() => readComments(id)); const [comment, setComment] = useState(""); const [authOpen, setAuthOpen] = useState(false); const [notice, setNotice] = useState(""); const KEY = process.env.REACT_APP_KEY;
+useEffect(() => { setLoading(true); setComments(readComments(id)); fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${KEY}&language=pt-BR`).then((r) => r.ok ? r.json() : Promise.reject()).then(setMovie).catch(() => setError("Não foi possível carregar os detalhes deste filme.")).finally(() => setLoading(false)); }, [id, KEY]);
+function toggle() { if (!user) return setAuthOpen(true); toggleFavorite(movie); } async function share() { const data = { title: movie.title, text: `Confira ${movie.title} na minha lista de filmes!`, url: window.location.href }; try { if (navigator.share) await navigator.share(data); else { await navigator.clipboard.writeText(window.location.href); setNotice("Link copiado para a área de transferência!"); } } catch {} } function postComment(e) { e.preventDefault(); if (!user) return setAuthOpen(true); const text = comment.trim(); if (!text) return; const updated = [{ id: Date.now(), author: user.name, text, date: new Date().toLocaleDateString("pt-BR") }, ...comments]; setComments(updated); localStorage.setItem(`movieComments-${id}`, JSON.stringify(updated)); setComment(""); }
+if (loading) return <p className="page-status">Carregando filme…</p>; if (error || !movie) return <p className="page-status">{error || "Filme não encontrado."}</p>;
+return <div className="movie-page"><header className="movie-header"><Link to="/" className="brand">CINE<span>LIST</span></Link><Link to="/" className="back-link">← Voltar ao catálogo</Link></header><main className="movie-main"><img className="img-movie" src={movie.poster_path ? `${imagePath}${movie.poster_path}` : "https://placehold.co/500x750/252525/ffffff?text=Sem+poster"} alt={`Poster de ${movie.title}`} /><article className="movie-content"><p className="eyebrow">{movie.release_date?.slice(0, 4) || "–"} · {movie.genres?.map((genre) => genre.name).join(" · ")}</p><h1>{movie.title}</h1><div className="rating">★ {movie.vote_average?.toFixed(1)} <span>/ 10</span></div><p className="overview">{movie.overview || "Sinopse não disponível."}</p><div className="movie-actions"><button className={isFavorite(movie.id) ? "save-button saved" : "save-button"} onClick={toggle}>{isFavorite(movie.id) ? "♥ Na minha lista" : "♡ Salvar na minha lista"}</button><button className="share-button" onClick={share}>↗ Compartilhar</button></div></article></main><section className="comments"><p className="eyebrow">CONVERSA DE CINÉFILOS</p><h2>Comentários <span>({comments.length})</span></h2><form onSubmit={postComment}><textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={user ? "O que você achou deste filme?" : "Entre para deixar um comentário"} /><button type="submit">Publicar comentário</button></form><div className="comment-list">{comments.length ? comments.map((item) => <article className="comment" key={item.id}><div className="avatar">{item.author.charAt(0).toUpperCase()}</div><div><strong>{item.author}</strong><small>{item.date}</small><p>{item.text}</p></div></article>) : <p className="no-comments">Ainda não há comentários. Seja a primeira pessoa a opinar.</p>}</div></section>{notice && <div className="share-notice">{notice}</div>}{authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}</div>; }

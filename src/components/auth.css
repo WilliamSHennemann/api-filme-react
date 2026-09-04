@@ -1,0 +1,8 @@
+.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1rem; background: rgba(0, 0, 0, .76); backdrop-filter: blur(5px); }
+.auth-modal { position: relative; width: min(100%, 420px); padding: 2.2rem; border: 1px solid #3a3a3a; border-radius: 20px; background: #171717; box-shadow: 0 24px 80px rgba(0, 0, 0, .6); }
+.modal-close { position: absolute; top: .8rem; right: 1rem; border: 0; color: #aaa; background: transparent; font-size: 2rem; cursor: pointer; }
+.eyebrow { color: #ffcc4d; font-size: .72rem; font-weight: 800; letter-spacing: .16em; }
+.auth-modal h2 { margin: .45rem 0; font-size: 1.8rem; }.auth-copy { color: #aaa; margin-bottom: 1.5rem; }
+.auth-modal form { display: grid; gap: .9rem; }.auth-modal label { display: grid; gap: .38rem; color: #dedede; font-size: .9rem; font-weight: 700; }
+.auth-modal input { width: 100%; padding: .78rem .9rem; border: 1px solid #444; border-radius: 10px; outline: none; color: #fff; background: #242424; font: inherit; }.auth-modal input:focus { border-color: #ffcc4d; box-shadow: 0 0 0 3px rgba(255, 204, 77, .12); }
+.primary-button { padding: .85rem 1rem; border: 0; border-radius: 10px; color: #121212; background: #ffcc4d; font: inherit; font-weight: 800; cursor: pointer; }.text-button { margin-top: 1.2rem; border: 0; color: #ffdc7c; background: transparent; font: inherit; cursor: pointer; }.form-error { color: #ff9696; font-size: .87rem; }
